@@ -9,8 +9,17 @@ from datetime import datetime
 from dateutil import parser
 import re
 
-# Set your OpenAI API key
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Streamlit UI Setup
+st.set_page_config(page_title="Fuel Specs Checker", layout="wide")
+st.title("ISO 8217:2010 Fuel Specification Checker")
+
+# Option to enter OpenAI API Key manually
+openai_api_key = st.text_input("Enter your OpenAI API Key", type="password")
+
+if openai_api_key:
+    client = openai.OpenAI(api_key=openai_api_key)
+else:
+    st.stop()
 
 # Load ISO 8217:2010 reference Excel
 @st.cache_data
@@ -117,9 +126,7 @@ def generate_pdf_report(parsed_data, results):
     pdf.output(out_path)
     return out_path
 
-# Streamlit UI
-st.set_page_config(page_title="Fuel Specs Checker", layout="wide")
-st.title("ISO 8217:2010 Fuel Specification Checker")
+# File uploader
 uploaded_file = st.file_uploader("Upload Fuel Specification PDF", type="pdf")
 
 if uploaded_file:
