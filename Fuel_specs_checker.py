@@ -10,7 +10,7 @@ from dateutil import parser
 import re
 
 # Set your OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Load ISO 8217:2010 reference Excel
 @st.cache_data
@@ -78,7 +78,7 @@ def parse_with_gpt(text):
     Text:
     {text}
     """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
     )
@@ -151,3 +151,4 @@ if uploaded_file:
         pdf_path = generate_pdf_report(parsed, result_dict)
         st.success("PDF report generated:")
         st.download_button("Download PDF Report", open(pdf_path, "rb"), file_name=os.path.basename(pdf_path))
+
