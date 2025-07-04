@@ -1,7 +1,7 @@
 streamlit
-openai
+openai>=1.0.0
 pandas
-PyPDF2
 fpdf
+PyPDF2
 python-dateutil
 openpyxl
