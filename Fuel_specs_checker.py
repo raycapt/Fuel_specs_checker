@@ -14,7 +14,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # Load ISO 8217:2010 reference Excel
 @st.cache_data
 def load_reference_limits():
-    xlsx_path = "ISO_8217_2010_Specs_20250704_144639.xlsx"
+    xlsx_path = "ISO_8217_2010_Specs.xlsx"
     distillate_df = pd.read_excel(xlsx_path, sheet_name="Distillate Fuels")
     residual_df = pd.read_excel(xlsx_path, sheet_name="Residual Fuels")
     return distillate_df, residual_df
