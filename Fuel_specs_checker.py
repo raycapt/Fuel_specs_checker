@@ -173,9 +173,12 @@ if uploaded_file:
     parameters = parsed["Parameters"]
     grade = parsed["Grade"].strip().upper()
     ref_df = pd.concat([distillate_df, residual_df], ignore_index=True)
+
+    # Fallback if 'Grade' column not found
     if 'Grade' not in ref_df.columns:
-        st.error("'Grade' column not found in the reference sheet.")
-        st.stop()
+        st.warning("'Grade' column missing in reference. Please select a matching spec sheet.")
+        selected_sheet = st.selectbox("Select reference sheet:", ["Distillate", "Residual"])
+        ref_df = distillate_df if selected_sheet == "Distillate" else residual_df
 
     ref_df['Grade'] = ref_df['Grade'].astype(str).str.upper()
     ref_row = ref_df[ref_df['Grade'] == grade]
