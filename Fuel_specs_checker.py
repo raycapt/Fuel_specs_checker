@@ -6,6 +6,7 @@ from PyPDF2 import PdfReader
 from fpdf import FPDF
 import tempfile
 from datetime import datetime
+from dateutil import parser
 import re
 
 # Set your OpenAI API key
@@ -30,7 +31,7 @@ def check_parameter(value, limit_str):
 
     if pd.isna(limit_str) or limit_str == "-":
         return "✅", "No limit"
-    
+
     if "-" in limit_str:
         parts = limit_str.split("-")
         min_val, max_val = float(parts[0]), float(parts[1])
@@ -73,7 +74,7 @@ def parse_with_gpt(text):
       "Grade": "",
       "Parameters": {{ "Viscosity": "4.5", ... }}
     }}
-    
+
     Text:
     {text}
     """
@@ -88,7 +89,8 @@ def generate_pdf_report(parsed_data, results):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 12)
-    pdf.image("Oldendorff_logo_RGB.jpg", 10, 8, 33)
+    if os.path.exists("Oldendorff_logo_RGB.jpg"):
+        pdf.image("Oldendorff_logo_RGB.jpg", 10, 8, 33)
     pdf.cell(200, 10, f"Fuel Specs Compliance Report", ln=True, align="C")
     pdf.set_font("Arial", size=10)
     pdf.ln(10)
@@ -129,15 +131,18 @@ if uploaded_file:
     parameters = parsed["Parameters"]
     grade = parsed["Grade"].strip().upper()
     ref_df = pd.concat([distillate_df, residual_df], ignore_index=True)
-    ref_row = ref_df[[col for col in ref_df.columns if col.upper() == grade]].copy()
+    ref_row = ref_df[ref_df['Grade'].str.upper() == grade]
 
     if ref_row.empty:
         st.error(f"Fuel Grade '{grade}' not found in reference sheet.")
     else:
-        spec_dict = dict(zip(ref_df["Parameter"], ref_row.iloc[:, 0]))
+        spec_dict = dict(zip(ref_row["Parameter"], ref_row["Limit"]))
         result_dict = {}
         for param, val in parameters.items():
             limit = spec_dict.get(param)
+            if limit is None:
+                result_dict[param] = (val, "No reference found", "❓")
+                continue
             symbol, status = check_parameter(val, limit)
             result_dict[param] = (val, status, symbol)
 
