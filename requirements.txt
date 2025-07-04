@@ -3,3 +3,5 @@ openai
 pandas
 PyPDF2
 fpdf
+python-dateutil
+openpyxl
