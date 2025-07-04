@@ -32,6 +32,13 @@ def load_reference_limits():
 
 distillate_df, residual_df = load_reference_limits()
 
+# Define valid product types and grades
+valid_products = ["HSFO", "ULSFO", "VLSFO", "LSMGO", "MDO"]
+valid_grades = [
+    "DMX", "DMA", "DMZ", "DMB", "RMA10", "RMB30", "RMD80", "RME180",
+    "RMG180", "RMG380", "RMG500", "RMG700", "RMK380", "RMK500", "RMK700"
+]
+
 # Determine parameter spec status
 def check_parameter(value, limit_str):
     try:
@@ -82,6 +89,7 @@ def parse_with_gpt(text):
       "Port": "",
       "Date": "",
       "Grade": "",
+      "Product": "",
       "Parameters": {{ "Viscosity": "4.5", ... }}
     }}
 
@@ -109,7 +117,7 @@ def generate_pdf_report(parsed_data, results):
     pdf.set_font("Arial", size=10)
     pdf.ln(10)
 
-    for k in ["Vessel", "IMO", "Port", "Date", "Grade"]:
+    for k in ["Vessel", "IMO", "Port", "Date", "Grade", "Product"]:
         pdf.cell(200, 8, f"{k}: {parsed_data.get(k, '')}", ln=True)
 
     pdf.ln(5)
@@ -152,6 +160,13 @@ uploaded_file = st.file_uploader("Upload Fuel Specification PDF", type="pdf")
 if uploaded_file:
     text = extract_text_from_pdf(uploaded_file)
     parsed = parse_with_gpt(text)
+
+    # Manual override if product type or grade is unclear
+    if parsed.get("Product", "").strip().upper() not in valid_products:
+        parsed["Product"] = st.selectbox("Select Product Type", valid_products)
+    if parsed.get("Grade", "").strip().upper() not in valid_grades:
+        parsed["Grade"] = st.selectbox("Select Fuel Grade", valid_grades)
+
     st.subheader("Extracted Info")
     st.json(parsed)
 
