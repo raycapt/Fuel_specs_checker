@@ -25,8 +25,8 @@ else:
 @st.cache_data
 def load_reference_limits():
     xlsx_path = "ISO_8217_2010_Specs.xlsx"
-    distillate_df = pd.read_excel(xlsx_path, sheet_name="Distillate Fuels")
-    residual_df = pd.read_excel(xlsx_path, sheet_name="Residual Fuels")
+    distillate_df = pd.read_excel(xlsx_path, sheet_name=0)
+    residual_df = pd.read_excel(xlsx_path, sheet_name=1)
     return distillate_df, residual_df
 
 distillate_df, residual_df = load_reference_limits()
@@ -44,13 +44,13 @@ def check_parameter(value, limit_str):
     if "-" in limit_str:
         parts = limit_str.split("-")
         min_val, max_val = float(parts[0]), float(parts[1])
-        return ("✅", "Within" if min_val <= value <= max_val else "❌ Off Spec")
+        return ("✅" if min_val <= value <= max_val else "❌", "Within" if min_val <= value <= max_val else "Off Spec")
     if "≤" in limit_str:
         max_val = float(limit_str.replace("≤", ""))
-        return ("✅", "Within" if value <= max_val else "❌ Off Spec")
+        return ("✅" if value <= max_val else "❌", "Within" if value <= max_val else "Off Spec")
     if "≥" in limit_str:
         min_val = float(limit_str.replace("≥", ""))
-        return ("✅", "Within" if value >= min_val else "❌ Off Spec")
+        return ("✅" if value >= min_val else "❌", "Within" if value >= min_val else "Off Spec")
     return "✅", "Within"
 
 # Extract text from uploaded PDF
@@ -114,12 +114,27 @@ def generate_pdf_report(parsed_data, results):
     pdf.cell(60, 8, "Status", border=1)
     pdf.set_font("Arial", size=10)
 
+    all_within = True
     for param, (value, status, symbol) in results.items():
+        if symbol == "❌":
+            all_within = False
         pdf.cell(90, 8, param, border=1)
         pdf.cell(40, 8, str(value), border=1)
-        pdf.set_text_color(255, 0, 0) if "❌" in symbol else pdf.set_text_color(0, 128, 0)
+        pdf.set_text_color(255, 0, 0) if symbol == "❌" else pdf.set_text_color(0, 128, 0)
+        pdf.set_font("Arial", "B", 10)
         pdf.cell(60, 8, f"{symbol} {status}", border=1)
         pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Arial", size=10)
+
+    pdf.ln(10)
+    pdf.set_font("Arial", "B", 12)
+    if all_within:
+        pdf.set_text_color(0, 128, 0)
+        pdf.cell(200, 10, "✔ WITHIN SPECS", ln=True, align="C")
+    else:
+        pdf.set_text_color(255, 0, 0)
+        pdf.cell(200, 10, "❌ OFF SPEC FUEL", ln=True, align="C")
+    pdf.set_text_color(0, 0, 0)
 
     fname = f"{parsed_data['Vessel']}_{parsed_data['IMO']}_{parsed_data['Date']}_{parsed_data['Grade']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     out_path = f"/mnt/data/{fname}"
@@ -138,7 +153,12 @@ if uploaded_file:
     parameters = parsed["Parameters"]
     grade = parsed["Grade"].strip().upper()
     ref_df = pd.concat([distillate_df, residual_df], ignore_index=True)
-    ref_row = ref_df[ref_df['Grade'].str.upper() == grade]
+    if 'Grade' not in ref_df.columns:
+        st.error("'Grade' column not found in the reference sheet.")
+        st.stop()
+
+    ref_df['Grade'] = ref_df['Grade'].astype(str).str.upper()
+    ref_row = ref_df[ref_df['Grade'] == grade]
 
     if ref_row.empty:
         st.error(f"Fuel Grade '{grade}' not found in reference sheet.")
@@ -154,8 +174,9 @@ if uploaded_file:
             result_dict[param] = (val, status, symbol)
 
         df_out = pd.DataFrame.from_dict(result_dict, orient="index", columns=["Value", "Status", "Symbol"])
-        st.dataframe(df_out)
+        df_out["Result"] = df_out["Symbol"] + " " + df_out["Status"]
+        st.dataframe(df_out[["Value", "Result"]])
+
         pdf_path = generate_pdf_report(parsed, result_dict)
         st.success("PDF report generated:")
         st.download_button("Download PDF Report", open(pdf_path, "rb"), file_name=os.path.basename(pdf_path))
-
