@@ -8,6 +8,7 @@ import tempfile
 from datetime import datetime
 from dateutil import parser
 import re
+import json
 
 # Streamlit UI Setup
 st.set_page_config(page_title="Fuel Specs Checker", layout="wide")
@@ -74,7 +75,7 @@ def parse_with_gpt(text):
     - Product/Fuel Grade
     - A dictionary of parameters and values (only numerical values)
 
-    Format output as:
+    Format output as strict JSON:
     {{
       "Vessel": "",
       "IMO": "",
@@ -91,7 +92,11 @@ def parse_with_gpt(text):
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
     )
-    return eval(response.choices[0].message.content)
+    try:
+        return json.loads(response.choices[0].message.content)
+    except json.JSONDecodeError:
+        st.error("Failed to parse GPT response. Please check the report format.")
+        st.stop()
 
 # Generate PDF report
 def generate_pdf_report(parsed_data, results):
